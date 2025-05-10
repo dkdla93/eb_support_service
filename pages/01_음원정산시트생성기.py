@@ -915,7 +915,7 @@ def section_zero_prepare_song_cost():
             sum_flux_yt_dict[a_fy] += val_fy
 
         # ---------------------------------------
-        # [중요] 2개 이상 소속도 “모두” 매출 더해서 actual_deduct 산출
+        # [중요] 2개 이상 소속도 "모두" 매출 더해서 actual_deduct 산출
         # ---------------------------------------
         updated_vals_for_def = []
 
@@ -1170,7 +1170,7 @@ def section_zero_prepare_song_cost():
                 st.error("원본 vs 처리 결과에 차이가 있습니다. 상세탭에서 상세 누락 행을 확인해 주세요.")
 
         with tab_missing:
-            # 여기에서 UMAG / Fluxus Song / Fluxus YT ‘missing_rows’ 표
+            # 여기에서 UMAG / Fluxus Song / Fluxus YT 'missing_rows' 표
             if diff_umag_row!=0 or diff_flux_song!=0 or diff_flux_yt!=0:
                 st.warning(f"매출 데이터 행개수 차이 발생!")
                 st.warning(f"UMAG: {diff_umag_row}개    /   FLUXUS_SONG: {diff_flux_song}개    /   FLUXUS_YT: {diff_flux_yt}개")
@@ -1353,7 +1353,7 @@ def section_two_sheet_link_and_verification():
 def section_three_upload_and_split_excel():
     """
     1) 보고서 구글시트에서 '파일→다운로드→Microsoft Excel(.xlsx)'로 받은 파일을 업로드
-    2) 업로드된 전체 워크북에서, 각 아티스트별 ‘정산서‘ 탭 + ‘세부매출내역’ 탭만 남기고
+    2) 업로드된 전체 워크북에서, 각 아티스트별 '정산서' 탭 + '세부매출내역' 탭만 남기고
        나머지 시트를 제거한 뒤, 해당 워크북을 ZIP으로 묶어 다운로드.
     3) 이 방식으로 하면 구글시트에서 이미 적용된 서식이 그대로 보존됩니다.
     """
@@ -1400,7 +1400,7 @@ def section_three_upload_and_split_excel():
             st.warning("업로드된 엑셀 파일에 시트가 없습니다.")
             return
 
-        # (4) “어떤 아티스트”에 해당하는 탭들이 있는지 찾기
+        # (4) "어떤 아티스트"에 해당하는 탭들이 있는지 찾기
         #     예: 'UMAG_홍길동(정산서)', 'UMAG_홍길동(세부매출내역)' 형태라고 가정
         from collections import defaultdict
         all_artists_sheets = defaultdict(lambda: {"report": None, "detail": None})
@@ -1900,11 +1900,11 @@ def generate_report(
                         d["middle"],
                         d["service"],
                         f"{year_val}년 {month_val}월",
-                        round(rv)
+                        d["revenue"]  # round() 제거, 원본 값 저장
                     ])
 
                 # 합계
-                detail_matrix.append(["합계","","","","","", round(total_det)])
+                detail_matrix.append(["합계","","","","","", total_det])  # round() 제거
                 row_cursor_detail_end = len(detail_matrix)
 
                 # 시트 업데이트
@@ -2134,7 +2134,7 @@ def generate_report(
                 # (C) 정산율 / 최종 정산금액
                 rate_val = artist_cost_dict[artist]["정산요율"]
                 공제적용후 = sum_2 - deduct_val
-                final_amount = round(공제적용후 * (rate_val / 100.0))
+                final_amount = 공제적용후 * (rate_val / 100.0)  # round() 제거
 
                 
 
@@ -2177,13 +2177,13 @@ def generate_report(
                     report_matrix[row_cursor][3] = d["middle"]
                     report_matrix[row_cursor][4] = d["service"]
                     report_matrix[row_cursor][5] = f"{year_val}년 {month_val}월"
-                    report_matrix[row_cursor][6] = round(rv)
+                    report_matrix[row_cursor][6] = d["revenue"]  # round() 제거
                     row_cursor += 1
 
                 row_cursor += 2
                 # 합계
                 report_matrix[row_cursor-1][1] = "합계"
-                report_matrix[row_cursor-1][6] = round(sum_1)
+                report_matrix[row_cursor-1][6] = sum_1  # round() 제거
                 row_cursor_sum1 = row_cursor
                 row_cursor += 1
 
@@ -2203,12 +2203,12 @@ def generate_report(
                     amt = album_sum[alb]
                     report_matrix[row_cursor][1] = alb
                     report_matrix[row_cursor][5] = f"{year_val}년 {month_val}월"
-                    report_matrix[row_cursor][6] = round(amt)
+                    report_matrix[row_cursor][6] = amt  # round() 제거
                     row_cursor += 1
 
                 row_cursor += 1
                 report_matrix[row_cursor-1][1] = "합계"
-                report_matrix[row_cursor-1][6] = round(sum_2)
+                report_matrix[row_cursor-1][6] = sum_2  # round() 제거
                 row_cursor_sum2 = row_cursor
                 row_cursor += 1
 
@@ -2260,11 +2260,11 @@ def generate_report(
                 report_matrix[row_cursor][1] = alb_str
                 report_matrix[row_cursor][2] = "수익 배분율"
                 report_matrix[row_cursor][3] = f"{int(rate_val)}%"
-                report_matrix[row_cursor][6] = round(final_amount)
+                report_matrix[row_cursor][6] = final_amount  # round() 제거
                 row_cursor += 1
 
                 report_matrix[row_cursor][1] = "총 정산금액"
-                report_matrix[row_cursor][6] = round(final_amount)
+                report_matrix[row_cursor][6] = final_amount  # round() 제거
                 row_cursor_sum4 = row_cursor
                 row_cursor += 2
 
@@ -3595,12 +3595,9 @@ def generate_report(
                         d["track_title"],
                         d["track_id"],
                         f"{year_val}년 {month_val}월",
-                        round(fy_rv_val)
+                        fy_rv_val  # round() 제거
                     ])
-
-
-                # 합계
-                fluxus_detail_matrix.append(["합계","","","","","", round(total_det)])
+                fluxus_detail_matrix.append(["합계","","","","","", total_det])  # round() 제거
                 row_cursor_fluxus_detail_end = len(fluxus_detail_matrix)
 
                 # 시트 업데이트
@@ -3896,7 +3893,7 @@ def generate_report(
 
                 # 6) 정산율
                 rate_val = artist_cost_dict[artist]["정산요율"]
-                final_amount = round(apply_val * (rate_val / 100.0))
+                final_amount = apply_val * (rate_val / 100.0)  # round() 제거
 
 
                 # --------------------------------------
@@ -3945,7 +3942,7 @@ def generate_report(
                         report_fluxus_matrix[row_cursor][1] = d["album"]       # 앨범명
                         report_fluxus_matrix[row_cursor][2] = d["track_title"] # 트랙제목
                         report_fluxus_matrix[row_cursor][4] = f"{year_val}년 {month_val}월"
-                        report_fluxus_matrix[row_cursor][5] = round(rv)
+                        report_fluxus_matrix[row_cursor][5] = rv  # round() 제거
                         row_cursor += 1
 
                     # [B] 트랙 모두 출력 뒤, "국내+해외 플랫폼 합계" 한 줄
@@ -3955,7 +3952,7 @@ def generate_report(
                     report_fluxus_matrix[row_cursor][1] = alb
                     report_fluxus_matrix[row_cursor][2] = f"국내, 해외 플랫폼({int(month_val)-1}월)"
                     report_fluxus_matrix[row_cursor][4] = f"{year_val}년 {month_val}월"
-                    report_fluxus_matrix[row_cursor][5] = round(fs_sum_for_this_album)
+                    report_fluxus_matrix[row_cursor][5] = fs_sum_for_this_album  # round() 제거
                     row_cursor += 1
 
 
@@ -3965,7 +3962,7 @@ def generate_report(
                 row_cursor += 2
                 # 합계
                 report_fluxus_matrix[row_cursor-1][1] = "합계"
-                report_fluxus_matrix[row_cursor-1][5] = round(fluxus_sum_all)
+                report_fluxus_matrix[row_cursor-1][5] = fluxus_sum_all  # round() 제거
                 row_cursor_sum1 = row_cursor
                 row_cursor += 1
 
@@ -3989,21 +3986,21 @@ def generate_report(
                     # 1) 앨범 전체 매출(= 기존 로직)
                     report_fluxus_matrix[row_cursor][1] = alb
                     report_fluxus_matrix[row_cursor][4] = f"{year_val}년 {month_val}월"
-                    report_fluxus_matrix[row_cursor][5] = round(amt_total)
+                    report_fluxus_matrix[row_cursor][5] = amt_total  # round() 제거
                     row_cursor += 1
                     
                     # 2) 국내, 해외 플랫폼(직전달)
                     report_fluxus_matrix[row_cursor][1] = alb
                     report_fluxus_matrix[row_cursor][2] = f"국내, 해외 플랫폼({int(month_val)-1}월)"
                     report_fluxus_matrix[row_cursor][4] = f"{year_val}년 {month_val}월"
-                    report_fluxus_matrix[row_cursor][5] = round(amt_song)
+                    report_fluxus_matrix[row_cursor][5] = amt_song  # round() 제거
                     row_cursor += 1
 
                 end_album_data = row_cursor  # 데이터 마지막 +1
 
                 row_cursor += 1
                 report_fluxus_matrix[row_cursor-1][1] = "합계"
-                report_fluxus_matrix[row_cursor-1][5] = round(fluxus_sum_all)
+                report_fluxus_matrix[row_cursor-1][5] = fluxus_sum_all  # round() 제거
                 row_cursor_sum2 = row_cursor
                 row_cursor += 1
 
@@ -4056,11 +4053,11 @@ def generate_report(
                 report_fluxus_matrix[row_cursor][1] = alb_str
                 report_fluxus_matrix[row_cursor][2] = "수익 배분율"
                 report_fluxus_matrix[row_cursor][3] = f"{int(rate_val)}%"
-                report_fluxus_matrix[row_cursor][5] = round(final_amount)
+                report_fluxus_matrix[row_cursor][5] = final_amount  # round() 제거
                 row_cursor += 1
 
                 report_fluxus_matrix[row_cursor][1] = "총 정산금액"
-                report_fluxus_matrix[row_cursor][5] = round(final_amount)
+                report_fluxus_matrix[row_cursor][5] = final_amount  # round() 제거
                 row_cursor_sum4 = row_cursor
                 row_cursor += 2
 
