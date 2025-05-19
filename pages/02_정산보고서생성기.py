@@ -999,7 +999,11 @@ def process_zip_files(uploaded_files):
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     for file_info in zip_ref.filelist:
                         try:
-                            filename = file_info.filename.encode('cp437').decode('cp949')
+                            # Mac ZIP: UTF-8로 저장된 파일명 (flag_bits & 0x800)
+                            if hasattr(file_info, 'flag_bits') and (file_info.flag_bits & 0x800):
+                                filename = file_info.filename
+                            else:
+                                filename = file_info.filename.encode('cp437').decode('cp949')
                             zip_ref.extract(file_info, temp_dir)
                             old_path = os.path.join(temp_dir, file_info.filename)
                             new_path = os.path.join(temp_dir, filename)
