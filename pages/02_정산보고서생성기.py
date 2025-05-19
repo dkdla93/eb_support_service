@@ -929,9 +929,19 @@ def extract_creator_name(zip_filename):
         if match:
             # 날짜 패턴이 끝나는 위치 찾기
             date_end_pos = match.end()
-            # 날짜 패턴 이후의 첫 공백을 찾아서 그 다음부터가 크리에이터명
+            
+            # 날짜 패턴 이후의 문자열을 크리에이터명으로 추출
             creator_name = filename_without_ext[date_end_pos:].strip()
-            return creator_name
+            
+            # '콘텐츠' 제거 (있는 경우)
+            creator_name = creator_name.replace('콘텐츠', '').strip()
+            
+            # 앞뒤 공백 제거
+            creator_name = creator_name.strip()
+            
+            # 크리에이터명이 비어있지 않은 경우에만 반환
+            if creator_name:
+                return creator_name
             
         return None
     except Exception as e:
@@ -968,29 +978,58 @@ def process_zip_files(uploaded_files):
                 with open(zip_path, 'wb') as f:
                     f.write(uploaded_file.getvalue())
                 
-                # 크리에이터명 추출
-                creator_name = extract_creator_name(uploaded_file.name.replace('.zip', ''))
+                # 크리에이터명 추출 (한글 지원)
+                creator_name = extract_creator_name(uploaded_file.name)
                 if not creator_name:
                     st.warning(f"'{uploaded_file.name}' 파일에서 크리에이터명을 추출할 수 없습니다.")
                     continue
                 
-                # 압축 해제
+                # 압축 해제 (한글 파일명 지원)
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(temp_dir)
+                    # 파일명 인코딩 처리
+                    for file_info in zip_ref.filelist:
+                        try:
+                            # 파일명 디코딩 시도
+                            filename = file_info.filename.encode('cp437').decode('cp949')
+                            # 압축 해제
+                            zip_ref.extract(file_info, temp_dir)
+                            # 파일명 변경 (필요한 경우)
+                            old_path = os.path.join(temp_dir, file_info.filename)
+                            new_path = os.path.join(temp_dir, filename)
+                            if old_path != new_path:
+                                os.rename(old_path, new_path)
+                        except Exception as e:
+                            print(f"파일명 처리 중 오류: {str(e)}")
+                            # 기본 방식으로 압축 해제
+                            zip_ref.extract(file_info, temp_dir)
                 
-                # '표 데이터.csv' 파일 찾기
+                # '표 데이터.csv' 파일 찾기 (한글 파일명 지원)
                 csv_file = None
                 for root, dirs, files in os.walk(temp_dir):
-                    if '표 데이터.csv' in files:
-                        csv_file = os.path.join(root, '표 데이터.csv')
-                        break
+                    for file in files:
+                        try:
+                            # 파일명 디코딩 시도
+                            decoded_file = file.encode('cp437').decode('cp949')
+                            if decoded_file == '표 데이터.csv':
+                                csv_file = os.path.join(root, file)
+                                break
+                        except:
+                            if file == '표 데이터.csv':
+                                csv_file = os.path.join(root, file)
+                                break
                 
                 if not csv_file:
                     st.warning(f"'{uploaded_file.name}'에서 '표 데이터.csv' 파일을 찾을 수 없습니다.")
                     continue
                 
-                # CSV 파일 읽기
-                df = pd.read_csv(csv_file, encoding='utf-8')
+                # CSV 파일 읽기 (인코딩 자동 감지)
+                try:
+                    df = pd.read_csv(csv_file, encoding='utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        df = pd.read_csv(csv_file, encoding='cp949')
+                    except:
+                        df = pd.read_csv(csv_file, encoding='utf-8-sig')
                 
                 # '상위 500개 결과 표시' 행 제거
                 df = df[df['콘텐츠'] != '상위 500개 결과 표시']
@@ -1016,6 +1055,7 @@ def process_zip_files(uploaded_files):
             
             except Exception as e:
                 st.error(f"ZIP 파일 처리 중 오류 발생 ({uploaded_file.name}): {str(e)}")
+                continue
         
         if not all_data_rows:
             return None
