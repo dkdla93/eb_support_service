@@ -17,7 +17,14 @@ import smtplib
 from email.header import Header
 from email.utils import formataddr
 import shutil
+import uuid
+import logging
 
+# 로그 설정 (INFO 이상, 시간/레벨/메시지)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # 페이지 기본 설정
 st.set_page_config(
@@ -973,34 +980,34 @@ def process_zip_files(uploaded_files):
         
         for uploaded_file in uploaded_files:
             try:
-                # 임시 파일로 ZIP 저장
-                zip_path = os.path.join(temp_dir, uploaded_file.name)
+                # 임시 영문 파일명 생성 (한글 파일명 문제 방지)
+                temp_zip_name = f"temp_{uuid.uuid4().hex}.zip"
+                zip_path = os.path.join(temp_dir, temp_zip_name)
                 with open(zip_path, 'wb') as f:
                     f.write(uploaded_file.getvalue())
+                logging.info(f"[ZIP] 저장 완료: {zip_path} (원본 파일명: {uploaded_file.name})")
                 
                 # 크리에이터명 추출 (한글 지원)
                 creator_name = extract_creator_name(uploaded_file.name)
+                logging.info(f"[ZIP] 크리에이터명 추출: {creator_name} (from {uploaded_file.name})")
                 if not creator_name:
                     st.warning(f"'{uploaded_file.name}' 파일에서 크리에이터명을 추출할 수 없습니다.")
+                    logging.warning(f"[ZIP] 크리에이터명 추출 실패: {uploaded_file.name}")
                     continue
                 
                 # 압축 해제 (한글 파일명 지원)
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    # 파일명 인코딩 처리
                     for file_info in zip_ref.filelist:
                         try:
-                            # 파일명 디코딩 시도
                             filename = file_info.filename.encode('cp437').decode('cp949')
-                            # 압축 해제
                             zip_ref.extract(file_info, temp_dir)
-                            # 파일명 변경 (필요한 경우)
                             old_path = os.path.join(temp_dir, file_info.filename)
                             new_path = os.path.join(temp_dir, filename)
                             if old_path != new_path:
                                 os.rename(old_path, new_path)
+                            logging.info(f"[ZIP] 파일명 처리: {file_info.filename} -> {filename}")
                         except Exception as e:
-                            print(f"파일명 처리 중 오류: {str(e)}")
-                            # 기본 방식으로 압축 해제
+                            logging.error(f"[ZIP] 파일명 처리 중 오류: {file_info.filename} ({str(e)})", exc_info=True)
                             zip_ref.extract(file_info, temp_dir)
                 
                 # '표 데이터.csv' 파일 찾기 (한글 파일명 지원)
@@ -1008,28 +1015,34 @@ def process_zip_files(uploaded_files):
                 for root, dirs, files in os.walk(temp_dir):
                     for file in files:
                         try:
-                            # 파일명 디코딩 시도
                             decoded_file = file.encode('cp437').decode('cp949')
                             if decoded_file == '표 데이터.csv':
                                 csv_file = os.path.join(root, file)
                                 break
-                        except:
+                        except Exception as e:
+                            logging.warning(f"[ZIP] 파일명 디코딩 실패: {file} ({str(e)})")
                             if file == '표 데이터.csv':
                                 csv_file = os.path.join(root, file)
                                 break
-                
                 if not csv_file:
                     st.warning(f"'{uploaded_file.name}'에서 '표 데이터.csv' 파일을 찾을 수 없습니다.")
+                    logging.warning(f"[ZIP] '표 데이터.csv' 파일 찾기 실패: {uploaded_file.name}")
                     continue
+                logging.info(f"[ZIP] '표 데이터.csv' 파일 경로: {csv_file}")
                 
                 # CSV 파일 읽기 (인코딩 자동 감지)
                 try:
                     df = pd.read_csv(csv_file, encoding='utf-8')
-                except UnicodeDecodeError:
+                    logging.info(f"[CSV] 파일 읽기 성공(utf-8): {csv_file}")
+                except UnicodeDecodeError as e:
+                    logging.warning(f"[CSV] utf-8 디코딩 실패: {csv_file} ({str(e)})")
                     try:
                         df = pd.read_csv(csv_file, encoding='cp949')
-                    except:
+                        logging.info(f"[CSV] 파일 읽기 성공(cp949): {csv_file}")
+                    except Exception as e2:
+                        logging.warning(f"[CSV] cp949 디코딩 실패: {csv_file} ({str(e2)})")
                         df = pd.read_csv(csv_file, encoding='utf-8-sig')
+                        logging.info(f"[CSV] 파일 읽기 성공(utf-8-sig): {csv_file}")
                 
                 # '상위 500개 결과 표시' 행 제거
                 df = df[df['콘텐츠'] != '상위 500개 결과 표시']
@@ -1055,6 +1068,7 @@ def process_zip_files(uploaded_files):
             
             except Exception as e:
                 st.error(f"ZIP 파일 처리 중 오류 발생 ({uploaded_file.name}): {str(e)}")
+                logging.error(f"[ZIP] ZIP 파일 처리 중 오류: {uploaded_file.name} ({str(e)})", exc_info=True)
                 continue
         
         if not all_data_rows:
@@ -1090,6 +1104,7 @@ def process_zip_files(uploaded_files):
     
     except Exception as e:
         st.error(f"전체 처리 중 오류 발생: {str(e)}")
+        logging.error(f"[ZIP] 전체 처리 중 오류: {str(e)}", exc_info=True)
         return None
     
     finally:
