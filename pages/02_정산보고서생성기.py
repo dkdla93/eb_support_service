@@ -811,7 +811,8 @@ def process_data(input_df, creator_info_handler, start_date, end_date,
                     admin_msg["To"] = email_user
                     admin_msg["Subject"] = f"크리에이터 보고서 생성 결과 ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
                     
-                    admin_body = """안녕하세요,\n\n생성된 보고서를 확인용으로 발송드립니다.\n크리에이터들에게는 이메일 발송 버튼을 통해 개별적으로 발송하실 수 있습니다.\n\n감사합니다."""
+                    admin_body = """안녕하세요,\n\n생성된 보고서를 확인용으로 발송드립니다.
+크리에이터들에게는 이메일 발송 버튼을 통해 개별적으로 발송하실 수 있습니다.\n\n감사합니다."""
                     
                     admin_msg.attach(MIMEText(admin_body, "plain"))
                     attachment = MIMEApplication(zip_data, _subtype="zip")
@@ -823,7 +824,6 @@ def process_data(input_df, creator_info_handler, start_date, end_date,
                     
                     if status_container:
                         status_container.success("관리자 이메일로 보고서가 발송되었습니다.")
-                        st.session_state['admin_email_sent'] = True
                     
                 except Exception as e:
                     if status_container:
@@ -1138,37 +1138,20 @@ def main():
     # ZIP 파일 변환 섹션
     st.header("0️⃣ ZIP 파일 변환 (선택사항)")
     with st.expander("ZIP 파일을 CSV로 변환", expanded=False):
-        zip_files = st.file_uploader(
-            "ZIP 파일 업로드 (여러 개 가능)",
-            type=['zip'],
-            accept_multiple_files=True,
-            key="zip_files",
-            help="여러 개의 ZIP 파일을 하나의 CSV 파일로 변환합니다."
+        st.markdown("""
+        ### ZIP 파일 변환 도구
+        ZIP 파일을 CSV로 변환하는 기능은 외부 도구로 이동되었습니다.
+        아래 버튼을 클릭하여 한글 처리가 가능한 변환 도구를 사용하세요.
+        """)
+        
+        # 외부 링크 버튼 추가
+        st.link_button(
+            "한글 처리 가능한 버전",
+            "https://vercel-zip-csv.vercel.app/",
+            type="primary",
+            use_container_width=True
         )
 
-        if zip_files:
-            if st.button("ZIP 파일 변환", key="convert_zip"):
-                with st.spinner('ZIP 파일 처리 중...'):
-                    try:
-                        converted_df = process_zip_files(zip_files)
-                        if converted_df is not None:
-                            # CSV 파일로 변환
-                            csv_data = converted_df.to_csv(index=False, encoding='utf-8-sig')
-                            
-                            # 다운로드 버튼 생성
-                            st.success("ZIP 파일 변환이 완료되었습니다!")
-                            st.download_button(
-                                label="변환된 CSV 파일 다운로드",
-                                data=csv_data,
-                                file_name="통합_통계_데이터.csv",
-                                mime="text/csv",
-                                key="download_converted_csv"
-                            )
-                        else:
-                            st.error("ZIP 파일 처리 중 오류가 발생했습니다.")
-                    except Exception as e:
-                        st.error(f"변환 중 오류가 발생했습니다: {str(e)}")
-    
     # 파일 업로드 섹션
     st.header("1️⃣ 데이터 파일 업로드")
     
