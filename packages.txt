@@ -2,7 +2,7 @@ ffmpeg
 libcairo2-dev
 pkg-config
 python3-dev
-libpango-1.0-dev
+libpango1.0-dev
 libgdk-pixbuf-2.0-dev
 libffi-dev
 shared-mime-info
